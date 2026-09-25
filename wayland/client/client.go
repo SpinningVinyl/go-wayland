@@ -2527,15 +2527,15 @@ func (i *DataDevice) SetSelectionHandler(f DataDeviceSelectionHandlerFunc) {
 func (i *DataDevice) Dispatch(opcode uint32, fd int, data []byte) {
 	switch opcode {
 	case 0:
-		if i.dataOfferHandler == nil {
-			return
-		}
 		var e DataDeviceDataOfferEvent
 		l := 0
-		e.Id = i.Context().GetProxy(Uint32(data[l : l+4])).(*DataOffer)
+		e.Id = new(DataOffer)
+		i.Context().RegisterServer(e.Id, Uint32(data[l:l+4]))
 		l += 4
 
-		i.dataOfferHandler(e)
+		if i.dataOfferHandler != nil {
+			i.dataOfferHandler(e)
+		}
 	case 1:
 		if i.enterHandler == nil {
 			return
@@ -6957,4 +6957,22 @@ func (e SubsurfaceError) Value() string {
 
 func (e SubsurfaceError) String() string {
 	return e.Name() + "=" + e.Value()
+}
+
+// TakesFD reports which events consume one descriptor from the Wayland FD queue.
+func (i *DataSource) TakesFD(opcode uint32) bool {
+	switch opcode {
+	case 1:
+		return true
+	}
+	return false
+}
+
+// TakesFD reports which events consume one descriptor from the Wayland FD queue.
+func (i *Keyboard) TakesFD(opcode uint32) bool {
+	switch opcode {
+	case 0:
+		return true
+	}
+	return false
 }

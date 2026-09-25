@@ -664,15 +664,15 @@ func (i *InputMethod) SetDeactivateHandler(f InputMethodDeactivateHandlerFunc) {
 func (i *InputMethod) Dispatch(opcode uint32, fd int, data []byte) {
 	switch opcode {
 	case 0:
-		if i.activateHandler == nil {
-			return
-		}
 		var e InputMethodActivateEvent
 		l := 0
-		e.Id = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*InputMethodContext)
+		e.Id = new(InputMethodContext)
+		i.Context().RegisterServer(e.Id, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.activateHandler(e)
+		if i.activateHandler != nil {
+			i.activateHandler(e)
+		}
 	case 1:
 		if i.deactivateHandler == nil {
 			return

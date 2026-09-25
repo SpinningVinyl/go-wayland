@@ -213,15 +213,15 @@ func (i *PrimarySelectionDevice) SetSelectionHandler(f PrimarySelectionDeviceSel
 func (i *PrimarySelectionDevice) Dispatch(opcode uint32, fd int, data []byte) {
 	switch opcode {
 	case 0:
-		if i.dataOfferHandler == nil {
-			return
-		}
 		var e PrimarySelectionDeviceDataOfferEvent
 		l := 0
-		e.Offer = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*PrimarySelectionOffer)
+		e.Offer = new(PrimarySelectionOffer)
+		i.Context().RegisterServer(e.Offer, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.dataOfferHandler(e)
+		if i.dataOfferHandler != nil {
+			i.dataOfferHandler(e)
+		}
 	case 1:
 		if i.selectionHandler == nil {
 			return
@@ -451,4 +451,12 @@ func (i *PrimarySelectionSource) Dispatch(opcode uint32, fd int, data []byte) {
 
 		i.cancelledHandler(e)
 	}
+}
+
+func (i *PrimarySelectionSource) TakesFD(opcode uint32) bool {
+	switch opcode {
+	case 0:
+		return true
+	}
+	return false
 }

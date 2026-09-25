@@ -246,15 +246,15 @@ func (i *DrmLeaseDevice) Dispatch(opcode uint32, fd int, data []byte) {
 
 		i.drmFdHandler(e)
 	case 1:
-		if i.connectorHandler == nil {
-			return
-		}
 		var e DrmLeaseDeviceConnectorEvent
 		l := 0
-		e.Id = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*DrmLeaseConnector)
+		e.Id = new(DrmLeaseConnector)
+		i.Context().RegisterServer(e.Id, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.connectorHandler(e)
+		if i.connectorHandler != nil {
+			i.connectorHandler(e)
+		}
 	case 2:
 		if i.doneHandler == nil {
 			return
@@ -686,4 +686,20 @@ func (i *DrmLease) Dispatch(opcode uint32, fd int, data []byte) {
 
 		i.finishedHandler(e)
 	}
+}
+
+func (i *DrmLeaseDevice) TakesFD(opcode uint32) bool {
+	switch opcode {
+	case 0:
+		return true
+	}
+	return false
+}
+
+func (i *DrmLease) TakesFD(opcode uint32) bool {
+	switch opcode {
+	case 0:
+		return true
+	}
+	return false
 }

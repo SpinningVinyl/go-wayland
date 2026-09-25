@@ -169,25 +169,25 @@ func (i *TabletSeat) SetToolAddedHandler(f TabletSeatToolAddedHandlerFunc) {
 func (i *TabletSeat) Dispatch(opcode uint32, fd int, data []byte) {
 	switch opcode {
 	case 0:
-		if i.tabletAddedHandler == nil {
-			return
-		}
 		var e TabletSeatTabletAddedEvent
 		l := 0
-		e.Id = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*Tablet)
+		e.Id = new(Tablet)
+		i.Context().RegisterServer(e.Id, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.tabletAddedHandler(e)
-	case 1:
-		if i.toolAddedHandler == nil {
-			return
+		if i.tabletAddedHandler != nil {
+			i.tabletAddedHandler(e)
 		}
+	case 1:
 		var e TabletSeatToolAddedEvent
 		l := 0
-		e.Id = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*TabletTool)
+		e.Id = new(TabletTool)
+		i.Context().RegisterServer(e.Id, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.toolAddedHandler(e)
+		if i.toolAddedHandler != nil {
+			i.toolAddedHandler(e)
+		}
 	}
 }
 

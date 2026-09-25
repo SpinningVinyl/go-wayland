@@ -763,15 +763,15 @@ func (i *LinuxBufferParams) SetFailedHandler(f LinuxBufferParamsFailedHandlerFun
 func (i *LinuxBufferParams) Dispatch(opcode uint32, fd int, data []byte) {
 	switch opcode {
 	case 0:
-		if i.createdHandler == nil {
-			return
-		}
 		var e LinuxBufferParamsCreatedEvent
 		l := 0
-		e.Buffer = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*client.Buffer)
+		e.Buffer = new(client.Buffer)
+		i.Context().RegisterServer(e.Buffer, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.createdHandler(e)
+		if i.createdHandler != nil {
+			i.createdHandler(e)
+		}
 	case 1:
 		if i.failedHandler == nil {
 			return
@@ -1166,4 +1166,12 @@ func (i *LinuxDmabufFeedback) Dispatch(opcode uint32, fd int, data []byte) {
 
 		i.trancheFlagsHandler(e)
 	}
+}
+
+func (i *LinuxDmabufFeedback) TakesFD(opcode uint32) bool {
+	switch opcode {
+	case 1:
+		return true
+	}
+	return false
 }

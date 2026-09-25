@@ -192,35 +192,35 @@ func (i *TabletSeat) SetPadAddedHandler(f TabletSeatPadAddedHandlerFunc) {
 func (i *TabletSeat) Dispatch(opcode uint32, fd int, data []byte) {
 	switch opcode {
 	case 0:
-		if i.tabletAddedHandler == nil {
-			return
-		}
 		var e TabletSeatTabletAddedEvent
 		l := 0
-		e.Id = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*Tablet)
+		e.Id = new(Tablet)
+		i.Context().RegisterServer(e.Id, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.tabletAddedHandler(e)
-	case 1:
-		if i.toolAddedHandler == nil {
-			return
+		if i.tabletAddedHandler != nil {
+			i.tabletAddedHandler(e)
 		}
+	case 1:
 		var e TabletSeatToolAddedEvent
 		l := 0
-		e.Id = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*TabletTool)
+		e.Id = new(TabletTool)
+		i.Context().RegisterServer(e.Id, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.toolAddedHandler(e)
-	case 2:
-		if i.padAddedHandler == nil {
-			return
+		if i.toolAddedHandler != nil {
+			i.toolAddedHandler(e)
 		}
+	case 2:
 		var e TabletSeatPadAddedEvent
 		l := 0
-		e.Id = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*TabletPad)
+		e.Id = new(TabletPad)
+		i.Context().RegisterServer(e.Id, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.padAddedHandler(e)
+		if i.padAddedHandler != nil {
+			i.padAddedHandler(e)
+		}
 	}
 }
 
@@ -2093,25 +2093,25 @@ func (i *TabletPadGroup) Dispatch(opcode uint32, fd int, data []byte) {
 
 		i.buttonsHandler(e)
 	case 1:
-		if i.ringHandler == nil {
-			return
-		}
 		var e TabletPadGroupRingEvent
 		l := 0
-		e.Ring = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*TabletPadRing)
+		e.Ring = new(TabletPadRing)
+		i.Context().RegisterServer(e.Ring, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.ringHandler(e)
-	case 2:
-		if i.stripHandler == nil {
-			return
+		if i.ringHandler != nil {
+			i.ringHandler(e)
 		}
+	case 2:
 		var e TabletPadGroupStripEvent
 		l := 0
-		e.Strip = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*TabletPadStrip)
+		e.Strip = new(TabletPadStrip)
+		i.Context().RegisterServer(e.Strip, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.stripHandler(e)
+		if i.stripHandler != nil {
+			i.stripHandler(e)
+		}
 	case 3:
 		if i.modesHandler == nil {
 			return
@@ -2453,15 +2453,15 @@ func (i *TabletPad) SetRemovedHandler(f TabletPadRemovedHandlerFunc) {
 func (i *TabletPad) Dispatch(opcode uint32, fd int, data []byte) {
 	switch opcode {
 	case 0:
-		if i.groupHandler == nil {
-			return
-		}
 		var e TabletPadGroupEvent
 		l := 0
-		e.PadGroup = i.Context().GetProxy(client.Uint32(data[l : l+4])).(*TabletPadGroup)
+		e.PadGroup = new(TabletPadGroup)
+		i.Context().RegisterServer(e.PadGroup, client.Uint32(data[l:l+4]))
 		l += 4
 
-		i.groupHandler(e)
+		if i.groupHandler != nil {
+			i.groupHandler(e)
+		}
 	case 1:
 		if i.pathHandler == nil {
 			return

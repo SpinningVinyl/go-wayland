@@ -28,9 +28,12 @@ func PutFixed(dst []byte, f float64) {
 	*(*int32)(unsafe.Pointer(&dst[0])) = fx
 }
 
-func PutString(dst []byte, v string, l int) {
-	PutUint32(dst[:4], uint32(l))
-	copy(dst[4:], []byte(v))
+// PutString writes the unpadded byte length, including the terminating NUL.
+// The buffer may be padded to four bytes, but its length is not the wire length.
+func PutString(dst []byte, v string, _ int) {
+	PutUint32(dst[:4], uint32(len(v)+1))
+	copy(dst[4:], v)
+	dst[4+len(v)] = 0
 }
 
 func PutArray(dst []byte, a []byte) {

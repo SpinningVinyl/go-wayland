@@ -3,103 +3,70 @@ package client
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"unsafe"
 
 	"golang.org/x/sys/unix"
-
-	_ "unsafe"
 )
 
-var oobSpace = unix.CmsgSpace(4)
-
-func (ctx *Context) ReadMsg() (senderID uint32, opcode uint32, fd int, msg []byte, err error) {
-	fd = -1
-
-	oob := make([]byte, oobSpace)
+// ReadMsg reads a complete wire message and every descriptor received along the way.
+// Descriptors form a separate ordered stream: they need not accompany their event.
+// Only this reader touches conn; DispatchMessage consumes the FD queue on the UI thread.
+func (ctx *Context) ReadMsg() (senderID uint32, opcode uint32, fds []int, msg []byte, err error) {
+	defer func() {
+		if err != nil {
+			for _, fd := range fds {
+				_ = unix.Close(fd)
+			}
+			fds = nil
+		}
+	}()
+	readFull := func(dst []byte) error {
+		// Linux allows up to 253 SCM_RIGHTS descriptors in one sendmsg.
+		oob := make([]byte, unix.CmsgSpace(253*4))
+		for len(dst) > 0 {
+			n, oobn, flags, _, readErr := ctx.conn.ReadMsgUnix(dst, oob)
+			if oobn > 0 {
+				messages, parseErr := unix.ParseSocketControlMessage(oob[:oobn])
+				if parseErr != nil {
+					return parseErr
+				}
+				for _, message := range messages {
+					rights, parseErr := unix.ParseUnixRights(&message)
+					if parseErr != nil {
+						return parseErr
+					}
+					fds = append(fds, rights...)
+				}
+			}
+			if flags&unix.MSG_CTRUNC != 0 {
+				return fmt.Errorf("truncated Wayland file descriptors")
+			}
+			if readErr != nil {
+				return readErr
+			}
+			if n == 0 {
+				return io.EOF
+			}
+			dst = dst[n:]
+		}
+		return nil
+	}
 	header := make([]byte, 8)
-
-	n, oobn, _, _, err := ctx.conn.ReadMsgUnix(header, oob)
-	if err != nil {
-		return senderID, opcode, fd, msg, err
+	if err = readFull(header); err != nil {
+		return
 	}
-	if n != 8 {
-		return senderID, opcode, fd, msg, fmt.Errorf("ctx.ReadMsg: incorrect number of bytes read for header (n=%d)", n)
-	}
-
-	if oobn > 0 {
-		fds, err := getFdsFromOob(oob, oobn, "header")
-		if err != nil {
-			return senderID, opcode, fd, msg, fmt.Errorf("ctx.ReadMsg: %w", err)
-		}
-
-		if len(fds) > 0 {
-			fd = fds[0]
-		}
-	}
-
 	senderID = Uint32(header[:4])
-	opcodeAndSize := Uint32(header[4:8])
+	opcodeAndSize := Uint32(header[4:])
 	opcode = opcodeAndSize & 0xffff
-	size := opcodeAndSize >> 16
-
-	msgSize := int(size) - 8
-	if msgSize == 0 {
-		return senderID, opcode, fd, nil, nil
+	size := int(opcodeAndSize >> 16)
+	if size < 8 || size%4 != 0 {
+		err = fmt.Errorf("invalid Wayland message size %d", size)
+		return
 	}
-
-	msg = make([]byte, msgSize)
-
-	if fd == -1 {
-		// if something was read before, then zero it out
-		if oobn > 0 {
-			oob = make([]byte, oobSpace)
-		}
-
-		n, oobn, _, _, err = ctx.conn.ReadMsgUnix(msg, oob)
-	} else {
-		n, err = ctx.conn.Read(msg)
-	}
-	if err != nil {
-		return senderID, opcode, fd, msg, fmt.Errorf("ctx.ReadMsg: %w", err)
-	}
-	if n != msgSize {
-		return senderID, opcode, fd, msg, fmt.Errorf("ctx.ReadMsg: incorrect number of bytes read for msg (n=%d, msgSize=%d)", n, msgSize)
-	}
-
-	if fd == -1 && oobn > 0 {
-		fds, err := getFdsFromOob(oob, oobn, "msg")
-		if err != nil {
-			return senderID, opcode, fd, msg, fmt.Errorf("ctx.ReadMsg: %w", err)
-		}
-
-		if len(fds) > 0 {
-			fd = fds[0]
-		}
-	}
-
-	return senderID, opcode, fd, msg, nil
-}
-
-func getFdsFromOob(oob []byte, oobn int, source string) ([]int, error) {
-	if oobn > len(oob) {
-		return nil, fmt.Errorf("getFdsFromOob: incorrect number of bytes read from %s for oob (oobn=%d)", source, oobn)
-	}
-	scms, err := unix.ParseSocketControlMessage(oob)
-	if err != nil {
-		return nil, fmt.Errorf("getFdsFromOob: unable to parse control message from %s: %w", source, err)
-	}
-
-	var fdsRet []int
-	for _, scm := range scms {
-		fds, err := unix.ParseUnixRights(&scm)
-		if err != nil {
-			return nil, fmt.Errorf("getFdsFromOob: unable to parse unix rights from %s: %w", source, err)
-		}
-
-		fdsRet = append(fdsRet, fds...)
-	}
-
-	return fdsRet, nil
+	msg = make([]byte, size-8)
+	err = readFull(msg)
+	return
 }
 
 func Uint32(src []byte) uint32 {

@@ -648,14 +648,24 @@ func writeEventDispatcher(w io.Writer, ifaceName string, v Interface) {
 		}
 
 		fmt.Fprintf(w, "case %d:\n", i)
-		fmt.Fprintf(w, "if i.%sHandler == nil {\n", eventNameLower)
+		hasNewID := false
+		for _, arg := range e.Args {
+			if arg.Type == "new_id" {
+				hasNewID = true
+			}
+		}
+		if !hasNewID {
+			fmt.Fprintf(w, "if i.%sHandler == nil {\n", eventNameLower)
+		}
 		if hasFd {
 			fmt.Fprintf(w, "if fd != -1 {\n")
 			fmt.Fprintf(w, "unix.Close(fd)\n")
 			fmt.Fprintf(w, "}\n")
 		}
-		fmt.Fprintf(w, "return\n")
-		fmt.Fprintf(w, "}\n")
+		if !hasNewID {
+			fmt.Fprintf(w, "return\n")
+			fmt.Fprintf(w, "}\n")
+		}
 
 		fmt.Fprintf(w, "var e  %s%sEvent\n", ifaceName, eventName)
 
@@ -669,7 +679,23 @@ func writeEventDispatcher(w io.Writer, ifaceName string, v Interface) {
 
 			switch arg.Type {
 			case "object", "new_id":
-				if arg.Interface != "" {
+				if arg.Type == "new_id" && arg.Interface != "" {
+					argIface := toCamel(arg.Interface)
+					if !isLocalInterface(arg.Interface) {
+						if protocol.Name != "wayland" && strings.HasPrefix(arg.Interface, "wl_") {
+							argIface = "client." + toCamelPrefix(arg.Interface, "wl_")
+						}
+						if protocol.Name != "xdg_shell" && strings.HasPrefix(arg.Interface, "xdg_") {
+							argIface = "xdg_shell." + toCamelPrefix(arg.Interface, "xdg_")
+						}
+					}
+					readUint := "Uint32"
+					if protocol.Name != "wayland" {
+						readUint = "client.Uint32"
+					}
+					fmt.Fprintf(w, "e.%s = new(%s)\n", argName, argIface)
+					fmt.Fprintf(w, "i.Context().RegisterServer(e.%s, %s(data[l:l+4]))\n", argName, readUint)
+				} else if arg.Interface != "" {
 					argIface := toCamel(arg.Interface)
 
 					if !isLocalInterface(arg.Interface) {
@@ -748,10 +774,30 @@ func writeEventDispatcher(w io.Writer, ifaceName string, v Interface) {
 			}
 		}
 
-		fmt.Fprintf(w, "\ni.%sHandler(e)\n", eventNameLower)
+		if hasNewID {
+			fmt.Fprintf(w, "\nif i.%sHandler != nil { i.%sHandler(e) }\n", eventNameLower, eventNameLower)
+		} else {
+			fmt.Fprintf(w, "\ni.%sHandler(e)\n", eventNameLower)
+		}
 	}
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintf(w, "}\n")
+	fdCases := []int{}
+	for opcode, e := range v.Events {
+		for _, arg := range e.Args {
+			if arg.Type == "fd" {
+				fdCases = append(fdCases, opcode)
+				break
+			}
+		}
+	}
+	if len(fdCases) > 0 {
+		fmt.Fprintf(w, "func (i *%s) TakesFD(opcode uint32) bool {\n switch opcode {\n", ifaceName)
+		for _, opcode := range fdCases {
+			fmt.Fprintf(w, "case %d: return true\n", opcode)
+		}
+		fmt.Fprintf(w, "}\n return false\n}\n")
+	}
 }
 
 func toCamel(s string) string {

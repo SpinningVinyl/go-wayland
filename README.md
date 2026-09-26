@@ -25,3 +25,7 @@ compiled without CGO. From a checkout, run:
 ```sh
 CGO_ENABLED=0 go run ./examples/imageviewer file.jpg
 ```
+
+## License
+
+This project is licensed under the terms of the BSD 2-clause "simplified" license. See LICENSE for details.

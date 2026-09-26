@@ -5,9 +5,9 @@ import (
 	"errors"
 	"os"
 
-	"github.com/rajveermalviya/go-wayland/wayland/client"
-	"github.com/rajveermalviya/go-wayland/wayland/cursor/xcursor"
-	"github.com/rajveermalviya/go-wayland/wayland/internal/tempfile"
+	"github.com/SpinningVinyl/go-wayland/wayland/client"
+	"github.com/SpinningVinyl/go-wayland/wayland/cursor/xcursor"
+	"github.com/SpinningVinyl/go-wayland/wayland/internal/tempfile"
 	"golang.org/x/sys/unix"
 )
 

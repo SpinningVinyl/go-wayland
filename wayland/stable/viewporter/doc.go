@@ -1,3 +1,3 @@
 package viewporter
 
-//go:generate go run github.com/rajveermalviya/go-wayland/cmd/go-wayland-scanner -pkg viewporter -prefix wp -o viewporter.go -i https://raw.githubusercontent.com/wayland-project/wayland-protocols/1.31/stable/viewporter/viewporter.xml
+//go:generate go run github.com/SpinningVinyl/go-wayland/cmd/go-wayland-scanner -pkg viewporter -prefix wp -o viewporter.go -i https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/1.49/stable/viewporter/viewporter.xml

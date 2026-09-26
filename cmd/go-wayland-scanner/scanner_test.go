@@ -27,3 +27,28 @@ func TestGeneratedServerObjectAndFDType(t *testing.T) {
 		t.Fatalf("FD event type missing: %s", output.String())
 	}
 }
+
+func TestCurrentProtocolNames(t *testing.T) {
+	if got := toLowerCamel("range"); got != "_range" {
+		t.Fatalf("range argument generated as %q", got)
+	}
+	if got := interfaceGoType("zwp_tablet_tool_v2"); got != "tablet.TabletTool" {
+		t.Fatalf("tablet reference generated as %q", got)
+	}
+}
+
+func TestArrayPaddingAndMultipleFDs(t *testing.T) {
+	protocol = Protocol{Name: "test"}
+	var output bytes.Buffer
+	writeRequest(&output, "Manager", 0, Request{Name: "send", Args: []Arg{
+		{Name: "data", Type: "array"},
+		{Name: "listen_fd", Type: "fd"},
+		{Name: "close_fd", Type: "fd"},
+	}})
+	s := output.String()
+	for _, want := range []string{"client.PaddedLen(len(data))", "(4 + dataLen)", "unix.UnixRights(listenFd, closeFd)"} {
+		if !strings.Contains(s, want) {
+			t.Fatalf("missing %q in %s", want, s)
+		}
+	}
+}

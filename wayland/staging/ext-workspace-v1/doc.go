@@ -1,0 +1,3 @@
+package ext_workspace
+
+//go:generate go run github.com/SpinningVinyl/go-wayland/cmd/go-wayland-scanner -pkg ext_workspace -prefix ext -suffix v1 -o ext_workspace.go -i https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/1.49/staging/ext-workspace/ext-workspace-v1.xml

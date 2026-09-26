@@ -1,4 +1,4 @@
-module github.com/rajveermalviya/go-wayland/cmd/go-wayland-scanner
+module github.com/SpinningVinyl/go-wayland/cmd/go-wayland-scanner
 
 go 1.19
 

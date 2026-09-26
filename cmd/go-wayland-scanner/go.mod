@@ -1,6 +1,6 @@
 module github.com/SpinningVinyl/go-wayland/cmd/go-wayland-scanner
 
-go 1.19
+go 1.27.1
 
 require (
 	github.com/iancoleman/strcase v0.2.0

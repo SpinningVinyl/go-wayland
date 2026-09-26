@@ -1,4 +1,4 @@
-go 1.18
+go 1.27.1
 
 use (
 	./cmd/go-wayland-scanner

@@ -4,6 +4,7 @@
 
 This module contains pure Go implementation of the Wayland protocol.
 Currently only wayland-client functionality is supported.
+Go 1.27.1 is required to build the modules in this repository.
 
 Go code is generated from protocol XML files using
 [`go-wayland-scanner`](cmd/go-wayland-scanner/scanner.go).
